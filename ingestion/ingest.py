@@ -6,6 +6,7 @@ import sqlite3
 import pandas as pd
 import fastf1
 from dotenv import load_dotenv
+from fastf1.exceptions import RateLimitExceededError
 
 load_dotenv()
 os.makedirs("data", exist_ok=True)
@@ -68,7 +69,12 @@ def weather_summary(session):
 
 
 def ingest_season(conn, season):
-    schedule = fastf1.get_event_schedule(season, include_testing=False)
+    try:
+        schedule = fastf1.get_event_schedule(season, include_testing=False)
+    except RateLimitExceededError:
+        print("Rate limit reached. Wait about an hour and rerun the same command.")
+        raise SystemExit(1)
+
     for _, ev in schedule.iterrows():
         rnd = int(ev["RoundNumber"])
 
@@ -105,6 +111,10 @@ def ingest_season(conn, season):
                 )
             conn.commit()
             print(f"{season} round {rnd}: {ev['EventName']} saved ({len(results)} drivers)")
+        except RateLimitExceededError:
+            conn.rollback()
+            print("Rate limit reached. Wait about an hour and rerun the same command.")
+            raise SystemExit(1)
         except Exception as e:
             conn.rollback()
             print(f"FAILED {season} round {rnd}: {e}")
