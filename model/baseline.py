@@ -11,7 +11,8 @@ def load_results() -> pd.DataFrame:
     """All driver-race rows with grid and finishing positions."""
     conn = sqlite3.connect(DB_PATH)
     df = pd.read_sql_query(
-        "SELECT r.season, r.round, res.driver_abbr, res.grid_position, res.finish_position "
+        "SELECT r.season, r.round, res.driver_abbr, res.team, "
+        "res.grid_position, res.finish_position "
         "FROM results res JOIN races r ON r.season = res.season AND r.round = res.round",
         conn,
     )
@@ -31,7 +32,7 @@ def clean(df: pd.DataFrame) -> pd.DataFrame:
 
 def mae(df: pd.DataFrame) -> float:
     """Mean absolute error of the baseline 'finish = grid'."""
-    return df["grid_position"].sub(df["finish_position"]).abs().mean()
+    return (df["grid_position"] - df["finish_position"]).abs().mean()
 
 
 if __name__ == "__main__":
