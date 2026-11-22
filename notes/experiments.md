@@ -24,6 +24,9 @@
 | 4 | + driver_form | absolute_error | 3.761 / 3.285 (+12.7%) | 2.883 / 2.651 (+8.0%) | 3.312 / 3.041 (+8.2%) | +9.6% |
 | 5 | + team_form | squared_error | 3.761 / 3.432 (+8.7%) | 2.883 / 3.037 (-5.3%) | 3.312 / 3.331 (-0.6%) | +0.9% |
 | 6 | + team_form | absolute_error | 3.761 / 3.187 (+15.3%) | 2.883 / 2.665 (+7.6%) | 3.312 / 3.054 (+7.8%) | +10.2% |
+| 7 | + circuit_form (on run 6) | absolute_error | 3.761 / 3.162 (+15.9%) | 2.883 / 2.723 (+5.6%) | 3.312 / 3.085 (+6.9%) | +9.4% |
+| 8 | + rain (on run 6) | absolute_error | 3.761 / 3.197 (+15.0%) | 2.883 / 2.666 (+7.5%) | 3.312 / 3.042 (+8.2%) | +10.2% |
+| 9 | + circuit_form + rain (on run 6) | absolute_error | 3.761 / 3.167 (+15.8%) | 2.883 / 2.716 (+5.8%) | 3.312 / 3.086 (+6.8%) | +9.5% |
 
 Total runtime for all 18 evaluations: 1.8 s
 
@@ -32,6 +35,7 @@ Total runtime for all 18 evaluations: 1.8 s
 - driver_form added about 4 points of average improvement under absolute_error (5.7% to 9.6%)
 - team_form added little on average (9.6% to 10.2%): it helped 2023 a lot and was flat or slightly worse in 2024 and 2025
 - Best run (6) averages above the 10% target, but only 2023 clears it individually; 2024 and 2025 are about 7.6-7.8%
+- I tried circuit history and rain, and neither improved the model
 
 ## Caveats / next
 - Only three test seasons and one random seed, so small differences (under about 0.02 MAE) may be noise

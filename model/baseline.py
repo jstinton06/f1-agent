@@ -6,16 +6,23 @@ import pandas as pd
 DB_PATH = Path(__file__).resolve().parent.parent / "data" / "f1.db"
 TEST_SEASON = 2025
 
+CIRCUIT_ALIASES = {
+    "Monte Carlo": "Monaco",
+    "Miami Gardens": "Miami",
+    "Marina Bay": "Singapore",
+    "Yas Island": "Yas Marina",
+}
 
 def load_results() -> pd.DataFrame:
     """All driver-race rows with grid and finishing positions."""
     conn = sqlite3.connect(DB_PATH)
     df = pd.read_sql_query(
-        "SELECT r.season, r.round, res.driver_abbr, res.team, "
+        "SELECT r.season, r.round, r.location, r.rain, res.driver_abbr, res.team, "
         "res.grid_position, res.finish_position "
         "FROM results res JOIN races r ON r.season = res.season AND r.round = res.round",
         conn,
     )
+    df["location"] = df["location"].replace(CIRCUIT_ALIASES)
     conn.close()
     return df
 

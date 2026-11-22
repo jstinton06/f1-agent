@@ -7,14 +7,17 @@ from model.baseline import load_results, clean, mae
 
 TARGET = "finish_position"
 TEST_SEASONS = (2023, 2024, 2025)
-LEAK_CHECK = True  # set to False once you've verified it
+LEAK_CHECK = True  # set to False once verified
 
+BASE = ["grid_position", "pit_lane_start", "driver_form"]
 FEATURE_SETS = {
-    "grid + pit_lane": ["grid_position", "pit_lane_start"],
-    "+ driver_form": ["grid_position", "pit_lane_start", "driver_form"],
-    "+ team_form": ["grid_position", "pit_lane_start", "driver_form", "team_form"],
+    "driver_form": BASE,
+    "+ team_form": BASE + ["team_form"],
+    "+ circuit_form": BASE + ["team_form", "circuit_form"],
+    "+ rain": BASE + ["team_form", "rain"],
+    "+ circuit_form + rain": BASE + ["team_form", "circuit_form", "rain"],
 }
-LOSSES = ("squared_error", "absolute_error")
+LOSSES = ("absolute_error",)
 
 
 def add_form_features(df: pd.DataFrame) -> pd.DataFrame:
@@ -24,6 +27,16 @@ def add_form_features(df: pd.DataFrame) -> pd.DataFrame:
     df["driver_form"] = by_driver.transform(
         lambda x: x.shift(1).rolling(window=5, min_periods=1).mean()
     )
+    return df
+
+
+def add_circuit_form(df: pd.DataFrame) -> pd.DataFrame:
+    """Average finish of this driver at this circuit in earlier races only."""
+    df = df.sort_values(["season", "round"]).copy()
+    by_pair = df.groupby(["driver_abbr", "location"])["finish_position"]
+    df["circuit_form"] = by_pair.transform(lambda x: x.shift(1).expanding().mean())
+    # First visit to a circuit: fall back to the driver's recent form
+    df["circuit_form"] = df["circuit_form"].fillna(df["driver_form"])
     return df
 
 
@@ -67,14 +80,19 @@ if __name__ == "__main__":
     df = clean(load_results())
     df = df[df["season"] < 2026]
     df = add_form_features(df)
+    df = add_circuit_form(df)
 
     if LEAK_CHECK:
-        check = df[df["driver_abbr"] == "VER"].sort_values(["season", "round"])
-        print(check[["season", "round", "finish_position", "driver_form"]].head(8))
+        check = df[(df["driver_abbr"] == "VER") & (df["location"] == "Monza")]
+        print(check[["season", "round", "finish_position", "circuit_form"]])
+
+    print("rows with missing rain value:", int(df["rain"].isna().sum()))
+    df["rain"] = df["rain"].fillna(0)
 
     df = df.dropna(subset=["driver_form"])
     df = add_team_form(df)
     df = df.dropna(subset=["team_form"])
+    print("wet-race rows:", int(df["rain"].sum()), "of", len(df))
 
     for name, features in FEATURE_SETS.items():
         for loss in LOSSES:
