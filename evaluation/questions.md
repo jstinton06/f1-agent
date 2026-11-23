@@ -21,7 +21,15 @@
 
 ## Q4
 - Question: Predict the 2025 Italian Grand Prix and compare it with what actually happened.
-- Expected tool(s): predict_race (once)
-- Correct answer should include: errors 2.84 / 3.4 / 3.0, says race was held out of training
-- Must NOT include: invented reasons for any driver's result
-- Result so far: numbers all correct; weakness: lists data without comparing it
+- Expected tool(s): predict_race, called once
+- Correct answer should include: errors 2.84 (estimates), 3.4 (ranked), 3.0 (baseline); says the race was held out of training and the model was trained on 2018-2024
+- Must NOT include: invented reasons for any driver's result; a claim that the model beats the baseline based on one race
+
+### Run on 2026-11-23 (run_id 8ca6f746)
+- Tool calls: predict_race(season=2025, circuit="Monza"), one call, no wasted lookup
+- LLM calls: 2; total time 16.14 s; tokens 1,231 (step 1) and 5,660 (step 2)
+- Result: all 20 table rows and all three errors match the tool output; error explanations are correct; no invented reasons
+- Weaknesses:
+  1. Latency is over the 15 s target (step 2 took about 14 s, mostly writing out a 20-row table)
+  2. The summary says the raw estimates were closest overall, without saying this is a single race
+- Fixes to try: tell the model to show only the top 10 rows; add a single-race caveat rule to the system instruction; rerun and compare

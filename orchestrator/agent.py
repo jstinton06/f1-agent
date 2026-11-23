@@ -3,6 +3,7 @@ from google import genai
 from google.genai import types
 from tools.lookup import get_driver_results
 from model.predict import predict_race
+from google.genai import errors
 
 import json
 import time
@@ -10,6 +11,7 @@ import uuid
 from pathlib import Path
 
 LOG_PATH = Path(__file__).resolve().parent.parent / "logs" / "runs.jsonl"
+MAX_RETRIES = 3
 
 load_dotenv()
 client = genai.Client()
@@ -28,6 +30,9 @@ SYSTEM_INSTRUCTION = (
     "When giving a prediction, say the race was held out of training and the model was trained on 2018 to 2024. "
     "Report model_mae_estimates, model_mae_ranked, and baseline_mae exactly as returned. Do not claim the model beats the baseline based on one race. " 
     "Predictions only exist for races occurring in 2025 and later, which were held out of training. "
+    "After presenting a race prediction, summarize in two or three sentences how the errors compare, using only the returned values, "
+    "and explain each error value in one short sentence. " 
+    "When comparing the errors for a race prediction, say that this is a single race and not evidence about the model overall. "
 )
 
 
@@ -44,9 +49,8 @@ predict_race_declaration = {
         "Identify the race by season plus either the round number or the circuit name. "
         "Three error values: model_mae_estimates, which returns the average gap in finishing positions between the model's raw estimates and the actual finishes; "
         "model_mae_ranked, which returns the same gap after ranking the estimates; "
-        "and baseline_mae, which returns the average gap if every driver simply finished where they started. "
-        "After the table, summarize in two or three sentences how the errors compare, using only the returned values. "
-        "Explain each error value in one short sentence."
+        "and baseline_mae, which returns the average gap if every driver simply finished where they started."
+    
     ),
     "parameters": {
         "type": "object",
@@ -109,12 +113,47 @@ TOOLS = {
     "predict_race": predict_race,
 }
 
+class ModelUnavailable(Exception):
+    """The model can't be reached; the message is safe to show the user."""
+
+
 def log_event(run_id, event, **fields):
     """Append one JSON line describing something that happened in a run."""
     LOG_PATH.parent.mkdir(exist_ok=True)
     record = {"run_id": run_id, "time": time.time(), "event": event, **fields}
     with open(LOG_PATH, "a", encoding="utf-8") as f:
         f.write(json.dumps(record, default=str) + "\n")
+
+def call_model(run_id, contents, config):
+    """Call Gemini, retrying temporary failures. Raises ModelUnavailable with a clear message."""
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            return client.models.generate_content(
+                model=MODEL, contents=contents, config=config
+            )
+        except errors.APIError as e:
+            code = getattr(e, "code", None)
+            log_event(run_id, "api_error", attempt=attempt, code=code, message=str(e)[:300])
+
+            if code == 429 and "PerDay" in str(e):
+                raise ModelUnavailable(
+                    "The daily request limit for the model has been reached. "
+                    "Try again after it resets (midnight Pacific time)."
+                )
+
+            retryable = code in (429, 500, 502, 503, 504)
+            if retryable and attempt < MAX_RETRIES:
+                time.sleep(2 ** attempt)  # waits 2 s, then 4 s
+                continue
+
+            if retryable:
+                raise ModelUnavailable(
+                    "The model service is busy or unavailable. Please try again in a minute."
+                )
+            else:
+                raise ModelUnavailable(
+                    f"The request failed with an error: {code}. Please try again later."
+                )
 
 def run_tool(call):
     func = TOOLS.get(call.name)
@@ -139,14 +178,19 @@ def ask(question: str) -> str:
     contents = [types.Content(role="user", parts=[types.Part(text=question)])]
 
     for step in range(MAX_STEPS):
-        response = client.models.generate_content(
-            model=MODEL, contents=contents, config=config
-        )
+        t_llm = time.time()
+        try:
+            response = call_model(run_id, contents, config)
+        except ModelUnavailable as e:
+            log_event(run_id, "stopped", reason=str(e), steps=step + 1,
+                      seconds=round(time.time() - start, 2))
+            return str(e)
 
         usage = getattr(response, "usage_metadata", None)
         log_event(
             run_id, "llm_call", step=step + 1,
-            seconds=round(time.time() - start, 2),
+            seconds=round(time.time() - t_llm, 2),
+            elapsed=round(time.time() - start, 2),
             total_tokens=getattr(usage, "total_token_count", None),
         )
 
