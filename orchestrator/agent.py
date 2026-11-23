@@ -2,6 +2,7 @@ from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 from tools.lookup import get_driver_results
+from model.predict import predict_race
 
 load_dotenv()
 client = genai.Client()
@@ -16,8 +17,50 @@ SYSTEM_INSTRUCTION = (
     "reported as unavailable instead of filled in from memory. "
     "The data covers seasons 2018 to 2026. "
     "Use the tool's wins and podiums fields to answer questions about a driver's form "
-    "instead of counting yourself, and say plainly when a tool returns an error."
+    "instead of counting yourself, and say plainly when a tool returns an error. "
+    "When giving a prediction, say the race was held out of training and the model was trained on 2018 to 2024. "
+    "Report model_mae_estimates, model_mae_ranked, and baseline_mae exactly as returned. Do not claim the model beats the baseline based on one race. " 
+    "Predictions only exist for races occurring in 2025 and later, which were held out of training. "
 )
+
+
+predict_race_declaration = {
+    "name": "predict_race",
+    "description": (
+        "Predicts the finishing order of a past race that was held out of the model's training "
+        "(2025 and later, already in the database) and compares it with what actually happened. "
+        "Returns, for each driver, the starting grid position, estimated position (the model's raw estimate), "
+        "predicted position (the ranking of those estimates), and actual finish, plus "
+        "the average error (in finishing positions) of the model and of a baseline that "
+        "assumes everyone finishes where they started. "
+        "Use this when asked to predict or compare predictions for a specific race. "
+        "Identify the race by season plus either the round number or the circuit name. "
+        "Three error values: model_mae_estimates, which returns the average gap in finishing positions between the model's raw estimates and the actual finishes; "
+        "model_mae_ranked, which returns the same gap after ranking the estimates; "
+        "and baseline_mae, which returns the average gap if every driver simply finished where they started. "
+        "After the table, summarize in two or three sentences how the errors compare, using only the returned values. "
+        "Explain each error value in one short sentence."
+    ),
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "season": {
+                "type": "integer",
+                "description": "The season year, such as 2025.",
+            },
+            "round_number": {
+                "type": "integer",
+                "description": "Optional round number within the season, such as 16.",
+            },
+            "circuit": {
+                "type": "string",
+                "description": "Optional circuit or city name, such as 'Monza'. Use instead of round_number.",
+            },
+        },
+        "required": ["season"],
+    },
+}
+
 
 get_driver_results_declaration = {
     "name": "get_driver_results",
@@ -54,8 +97,10 @@ get_driver_results_declaration = {
     },
 }
 
-TOOLS = {"get_driver_results": get_driver_results}
-
+TOOLS = {
+    "get_driver_results": get_driver_results,
+    "predict_race": predict_race,
+}
 
 def run_tool(call):
     func = TOOLS.get(call.name)
@@ -68,7 +113,7 @@ def run_tool(call):
 
 
 def ask(question: str) -> str:
-    tools = types.Tool(function_declarations=[get_driver_results_declaration])
+    tools = types.Tool(function_declarations=[get_driver_results_declaration, predict_race_declaration])
     config = types.GenerateContentConfig(
         tools=[tools],
         system_instruction=SYSTEM_INSTRUCTION,
@@ -100,4 +145,4 @@ def ask(question: str) -> str:
 
 
 if __name__ == "__main__":
-    print(ask("How has Verstappen done at Monza?"))
+    print(ask("Predict the 2025 Italian Grand Prix and compare it with what actually happened."))

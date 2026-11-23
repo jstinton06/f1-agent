@@ -17,13 +17,13 @@ def load_results() -> pd.DataFrame:
     """All driver-race rows with grid and finishing positions."""
     conn = sqlite3.connect(DB_PATH)
     df = pd.read_sql_query(
-        "SELECT r.season, r.round, r.location, r.rain, res.driver_abbr, res.team, "
-        "res.grid_position, res.finish_position "
+        "SELECT r.season, r.round, r.event_name, r.location, r.rain, "
+        "res.driver_abbr, res.team, res.grid_position, res.finish_position "
         "FROM results res JOIN races r ON r.season = res.season AND r.round = res.round",
         conn,
     )
-    df["location"] = df["location"].replace(CIRCUIT_ALIASES)
     conn.close()
+    df["location"] = df["location"].replace(CIRCUIT_ALIASES)
     return df
 
 

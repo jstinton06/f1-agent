@@ -40,3 +40,20 @@ Total runtime for all 18 evaluations: 1.8 s
 ## Caveats / next
 - Only three test seasons and one random seed, so small differences (under about 0.02 MAE) may be noise
 - Ideas: circuit history, rain flag, more test seasons, multiple seeds, 2026 as a separate test
+
+## Decisions
+- Frozen model: grid_position, pit_lane_start, driver_form, team_form; loss=absolute_error (run 6)
+- Trained on 2018-2024 for the agent tool; 2025-2026 held out
+- absolute_error chosen over squared_error (beat it in every comparison)
+
+## Data notes
+- Grid position 0 = pit-lane start (checked against real races); set to field size, flagged in pit_lane_start
+- Circuit names merged: Monte Carlo/Monaco, Miami Gardens/Miami, Marina Bay/Singapore, Yas Island/Yas Marina
+- Rows dropped: drivers/teams with no earlier races (no form history)
+- rain flag = rain at any point in session (about 25% of rows); only known after the race, so test results for it are optimistic
+- 2026 round 16: labeled "Bahrain Grand Prix", location "Kuala Lumpur", 22 results; relocated race; event name unchanged, location Kuala Lumpur (source: formula1.com article).
+- 2026 excluded from training/testing (new regulations); Las Vegas 2026 not yet ingested
+
+## Target status
+- M2 target was >=10% lower MAE than baseline on a held-out season
+- Best run averages 10.2% across 2023-2025, but 2024 and 2025 are about 7.6-7.8%: met on average, not per season
