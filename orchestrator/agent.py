@@ -4,6 +4,13 @@ from google.genai import types
 from tools.lookup import get_driver_results
 from model.predict import predict_race
 
+import json
+import time
+import uuid
+from pathlib import Path
+
+LOG_PATH = Path(__file__).resolve().parent.parent / "logs" / "runs.jsonl"
+
 load_dotenv()
 client = genai.Client()
 
@@ -102,6 +109,13 @@ TOOLS = {
     "predict_race": predict_race,
 }
 
+def log_event(run_id, event, **fields):
+    """Append one JSON line describing something that happened in a run."""
+    LOG_PATH.parent.mkdir(exist_ok=True)
+    record = {"run_id": run_id, "time": time.time(), "event": event, **fields}
+    with open(LOG_PATH, "a", encoding="utf-8") as f:
+        f.write(json.dumps(record, default=str) + "\n")
+
 def run_tool(call):
     func = TOOLS.get(call.name)
     if func is None:
@@ -113,6 +127,10 @@ def run_tool(call):
 
 
 def ask(question: str) -> str:
+    run_id = uuid.uuid4().hex[:8]
+    start = time.time()
+    log_event(run_id, "question", text=question)
+    
     tools = types.Tool(function_declarations=[get_driver_results_declaration, predict_race_declaration])
     config = types.GenerateContentConfig(
         tools=[tools],
@@ -124,16 +142,32 @@ def ask(question: str) -> str:
         response = client.models.generate_content(
             model=MODEL, contents=contents, config=config
         )
+
+        usage = getattr(response, "usage_metadata", None)
+        log_event(
+            run_id, "llm_call", step=step + 1,
+            seconds=round(time.time() - start, 2),
+            total_tokens=getattr(usage, "total_token_count", None),
+        )
+
         model_turn = response.candidates[0].content
         calls = [p.function_call for p in model_turn.parts if p.function_call]
 
         if not calls:
+            log_event(run_id, "answer", text=response.text, steps=step + 1,
+                      seconds=round(time.time() - start, 2))
             return response.text
-
+        
         contents.append(model_turn)
         result_parts = []
         for call in calls:
+            t0 = time.time()
             result = run_tool(call)
+            log_event(
+                run_id, "tool_call", tool=call.name, args=dict(call.args),
+                seconds=round(time.time() - t0, 2),
+                error=result.get("error") if isinstance(result, dict) else None,
+            )
             result_parts.append(
                 types.Part.from_function_response(
                     name=call.name, response={"result": result}
@@ -141,6 +175,7 @@ def ask(question: str) -> str:
             )
         contents.append(types.Content(role="user", parts=result_parts))
 
+    log_event(run_id, "stopped", steps=MAX_STEPS, seconds=round(time.time() - start, 2))
     return f"Stopped after {MAX_STEPS} steps without a final answer."
 
 

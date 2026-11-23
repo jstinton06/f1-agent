@@ -225,4 +225,5 @@ __marimo__/
 # Project data (not committed)
 data/
 cache/
+logs/
 *.db
