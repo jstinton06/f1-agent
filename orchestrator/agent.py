@@ -4,6 +4,7 @@ from google.genai import types
 from tools.lookup import get_driver_results
 from model.predict import predict_race
 from tools.weather import get_circuit_weather
+from orchestrator.check import check_answer
 from google.genai import errors
 
 import json
@@ -196,8 +197,11 @@ def ask(question: str) -> str:
     run_id = uuid.uuid4().hex[:8]
     start = time.time()
     log_event(run_id, "question", text=question)
-    
-    tools = types.Tool(function_declarations=[get_driver_results_declaration, predict_race_declaration, get_weather_declaration])
+    tool_results = []
+
+    tools = types.Tool(function_declarations=[
+        get_driver_results_declaration, predict_race_declaration, get_weather_declaration,
+    ])
     config = types.GenerateContentConfig(
         tools=[tools],
         system_instruction=SYSTEM_INSTRUCTION,
@@ -225,15 +229,19 @@ def ask(question: str) -> str:
         calls = [p.function_call for p in model_turn.parts if p.function_call]
 
         if not calls:
-            log_event(run_id, "answer", text=response.text, steps=step + 1,
-                      seconds=round(time.time() - start, 2))
-            return response.text
-        
+            answer = response.text or ""
+            unsupported = check_answer(answer, question, tool_results)
+            log_event(run_id, "answer", text=answer, steps=step + 1,
+                      seconds=round(time.time() - start, 2),
+                      unsupported_numbers=unsupported)
+            return answer
+
         contents.append(model_turn)
         result_parts = []
         for call in calls:
             t0 = time.time()
             result = run_tool(call)
+            tool_results.append(result)
             log_event(
                 run_id, "tool_call", tool=call.name, args=dict(call.args),
                 seconds=round(time.time() - t0, 2),
@@ -248,7 +256,6 @@ def ask(question: str) -> str:
 
     log_event(run_id, "stopped", steps=MAX_STEPS, seconds=round(time.time() - start, 2))
     return f"Stopped after {MAX_STEPS} steps without a final answer."
-
 
 if __name__ == "__main__":
     print(ask("How often does it rain at Monaco?"))
