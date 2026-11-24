@@ -258,4 +258,4 @@ def ask(question: str) -> str:
     return f"Stopped after {MAX_STEPS} steps without a final answer."
 
 if __name__ == "__main__":
-    print(ask("How often does it rain at Monaco?"))
+    print(ask("Predict the results for Qatar 2025."))

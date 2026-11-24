@@ -1,0 +1,141 @@
+[
+  {
+    "id": 1,
+    "question": "How has Verstappen done at Monza?",
+    "tools": [
+      "get_driver_results"
+    ],
+    "acceptable": [
+      [
+        "get_driver_results"
+      ]
+    ],
+    "correct": true,
+    "seconds": 1.27
+  },
+  {
+    "id": 2,
+    "question": "How many races has Verstappen won?",
+    "tools": [
+      "get_driver_results"
+    ],
+    "acceptable": [
+      [
+        "get_driver_results"
+      ]
+    ],
+    "correct": true,
+    "seconds": 3.66
+  },
+  {
+    "id": 3,
+    "question": "Tell me about Red Bull",
+    "tools": [],
+    "acceptable": [
+      []
+    ],
+    "correct": true,
+    "seconds": 2.78
+  },
+  {
+    "id": 4,
+    "question": "Predict the 2025 Italian Grand Prix and compare it with what actually happened.",
+    "tools": [
+      "predict_race"
+    ],
+    "acceptable": [
+      [
+        "predict_race"
+      ]
+    ],
+    "correct": true,
+    "seconds": 2.17
+  },
+  {
+    "id": 5,
+    "question": "How often does it rain at Monaco?",
+    "tools": [
+      "get_circuit_weather"
+    ],
+    "acceptable": [
+      [
+        "get_circuit_weather"
+      ]
+    ],
+    "correct": true,
+    "seconds": 1.67
+  },
+  {
+    "id": 6,
+    "question": "Will it rain at Monza next weekend?",
+    "tools": [
+      "get_circuit_weather"
+    ],
+    "acceptable": [
+      [],
+      [
+        "get_circuit_weather"
+      ]
+    ],
+    "correct": true,
+    "seconds": 12.49
+  },
+  {
+    "id": 7,
+    "question": "What was Lewis Hamilton's average finish in 2024?",
+    "tools": [
+      "get_driver_results"
+    ],
+    "acceptable": [
+      [
+        "get_driver_results"
+      ]
+    ],
+    "correct": true,
+    "seconds": 1.09
+  },
+  {
+    "id": 8,
+    "question": "Predict the 2025 Monaco Grand Prix.",
+    "tools": [
+      "predict_race"
+    ],
+    "acceptable": [
+      [
+        "predict_race"
+      ]
+    ],
+    "correct": true,
+    "seconds": 2.97
+  },
+  {
+    "id": 9,
+    "question": "How do Leclerc and Norris compare at Silverstone?",
+    "tools": [
+      "get_driver_results",
+      "get_driver_results"
+    ],
+    "acceptable": [
+      [
+        "get_driver_results",
+        "get_driver_results"
+      ]
+    ],
+    "correct": true,
+    "seconds": 1.28
+  },
+  {
+    "id": 10,
+    "question": "What is the average track temperature at Silverstone?",
+    "tools": [
+      "get_circuit_weather"
+    ],
+    "acceptable": [
+      [
+        "get_circuit_weather"
+      ]
+    ],
+    "correct": true,
+    "seconds": 36.02
+  }
+]

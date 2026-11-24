@@ -223,7 +223,8 @@ __marimo__/
 .streamlit/secrets.toml
 
 # Project data (not committed)
-data/
 cache/
 logs/
 *.db
+data/*
+!data/f1.db

@@ -52,18 +52,25 @@ def first_tool_calls(question):
     return names, round(time.time() - t0, 2)
 
 
-def run_select():
-    results = []
+def run_select(ids=None):
+    saved = {}
+    if OUT.exists():
+        saved = {r["id"]: r for r in json.loads(OUT.read_text(encoding="utf-8"))}
+
     for c in CASES:
+        if ids and c["id"] not in ids:
+            continue
         try:
             names, secs = first_tool_calls(c["question"])
         except agent.ModelUnavailable as e:
             print("STOPPED:", e)
             break
         ok = names in c["acceptable"]
-        results.append({"id": c["id"], "question": c["question"], "tools": names,
-                        "acceptable": c["acceptable"], "correct": ok, "seconds": secs})
+        saved[c["id"]] = {"id": c["id"], "question": c["question"], "tools": names,
+                          "acceptable": c["acceptable"], "correct": ok, "seconds": secs}
         print(f"Q{c['id']}: {'PASS' if ok else 'FAIL'}  tools={names}  {secs}s")
+
+    results = [saved[k] for k in sorted(saved)]
     if results:
         n = sum(r["correct"] for r in results)
         print(f"\nTool selection: {n}/{len(results)} = {n / len(results):.0%}")
@@ -80,7 +87,10 @@ def run_full(ids):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1 and sys.argv[1] == "full":
-        run_full({int(x) for x in sys.argv[2:]})
+    args = sys.argv[1:]
+    if args and args[0] == "full":
+        run_full({int(x) for x in args[1:]})
+    elif args and args[0] == "select":
+        run_select({int(x) for x in args[1:]} or None)
     else:
         run_select()
