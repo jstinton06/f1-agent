@@ -3,6 +3,7 @@
 An LLM agent (Gemini Flash) built for PRV 201, Track A. It answers questions about Formula 1 driver results, historical circuit weather, and predictions for held-out 2025+ races. It decides which tool to call, runs it, and answers only from the tool results.
 
 ## How it works
+<img width="569" height="501" alt="PRV201_AgentDesign" src="https://github.com/user-attachments/assets/9eda119b-bdaf-4427-a123-343bce0ef9b2" />
 
 - **Orchestrator** (`orchestrator/agent.py`): the LLM reads the question, calls tools in a loop (up to 5 steps), and writes the answer. Retries temporary API errors (503, per-minute 429) and returns a clear message if the daily limit is reached.
 - **Tools**
