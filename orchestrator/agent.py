@@ -3,6 +3,7 @@ from google import genai
 from google.genai import types
 from tools.lookup import get_driver_results
 from model.predict import predict_race
+from tools.weather import get_circuit_weather
 from google.genai import errors
 
 import json
@@ -32,7 +33,9 @@ SYSTEM_INSTRUCTION = (
     "Predictions only exist for races occurring in 2025 and later, which were held out of training. "
     "After presenting a race prediction, summarize in two or three sentences how the errors compare, using only the returned values, "
     "and explain each error value in one short sentence. " 
-    "When comparing the errors for a race prediction, say that this is a single race and not evidence about the model overall. "
+    "When comparing the errors for a race prediction, say that this is a single race and not evidence about the model overall. " 
+    "When asked about weather, report the historical average from past races in the database, not a forecast. " 
+    "The tools cannot give a weather forecast if prompted. Temperatures are measured in celsius and wind speed in m/s. "
 )
 
 
@@ -108,9 +111,33 @@ get_driver_results_declaration = {
     },
 }
 
+get_weather_declaration = {
+    "name": "get_circuit_weather",
+    "description": (
+        "Looks up historical weather at a circuit, from the races in the database. "
+        "Returns the circuit name, number of races in the data, number of rainy races, "
+        "share of races with rain (rounded to 2 decimals), and the average air temp, "
+        "track temp, and wind speed across all matching races. "
+        "Covers seasons 2018 to 2026. Returns an error if no races are found. "
+        "Use this when asked about typical or historical weather or rain at a circuit. "
+        "The figures are historical figures and not a forecast. Temperatures are measured in celsius and wind speed in m/s. "
+    ),
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "circuit": {
+                "type": "string",
+                "description": "The circuit or city name, such as 'Monza'.",
+            },
+        },
+        "required": ["circuit"],
+    },
+}
+
 TOOLS = {
     "get_driver_results": get_driver_results,
     "predict_race": predict_race,
+    "get_circuit_weather": get_circuit_weather,
 }
 
 class ModelUnavailable(Exception):
@@ -170,7 +197,7 @@ def ask(question: str) -> str:
     start = time.time()
     log_event(run_id, "question", text=question)
     
-    tools = types.Tool(function_declarations=[get_driver_results_declaration, predict_race_declaration])
+    tools = types.Tool(function_declarations=[get_driver_results_declaration, predict_race_declaration, get_weather_declaration])
     config = types.GenerateContentConfig(
         tools=[tools],
         system_instruction=SYSTEM_INSTRUCTION,
@@ -224,4 +251,4 @@ def ask(question: str) -> str:
 
 
 if __name__ == "__main__":
-    print(ask("Predict the 2025 Italian Grand Prix and compare it with what actually happened."))
+    print(ask("How often does it rain at Monaco?"))

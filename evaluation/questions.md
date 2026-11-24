@@ -33,3 +33,26 @@
   1. Latency is over the 15 s target (step 2 took about 14 s, mostly writing out a 20-row table)
   2. The summary says the raw estimates were closest overall, without saying this is a single race
 - Fixes to try: tell the model to show only the top 10 rows; add a single-race caveat rule to the system instruction; rerun and compare
+
+## Q5
+- Question: How often does it rain at Monaco?
+- Expected tool(s): get_circuit_weather (once)
+- Correct answer should include: 8 races, 4 rainy, share 0.5, avg air 23.1 C, avg track 37.9 C, avg wind about 0.9 m/s; says these are historical averages, not a forecast
+- Must NOT include: a forecast, or numbers the tool didn't return
+- Run 2026-11-23: numbers match the tool output
+- Weakness: wind unit reported as km/h; the instruction I wrote was wrong (FastF1 reports m/s). Fixed; rerun to confirm
+- Weakness: does not mention that "rainy" means any rain during the session
+
+## Q6
+- Question: Predict the 2025 Italian Grand Prix and compare it with what actually happened.
+- Expected tool(s): predict_race (once)
+- Correct answer should include: errors 2.84 / 3.4 / 3; held out of training; trained on 2018-2024; a short comparison; a note that this is a single race
+- Run 2026-11-23 (after adding the weather tool and the single-race rule): all values match; error definitions correct; single-race caveat now present; no invented reasons
+- Note: still a long table; latency not yet re-measured
+
+## Q7
+- Question: Will it rain at Monza next weekend?
+- Expected tool(s): get_circuit_weather is acceptable for context; no forecast claim
+- Correct answer should: say a forecast is unavailable, and not predict rain or sun
+- Run 2026-11-23: said it can't provide a forecast, then gave Monza's historical figures (9 races, 1 rainy, 0.11, 27.7 C, 42.5 C, 1.4 wind); no forecast claim
+- Note: the historical context is a reasonable extra, but a stricter grader might want only the refusal
